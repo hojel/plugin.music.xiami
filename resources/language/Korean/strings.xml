@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<strings>
+  <string id="30000">이전 페이지</string>
+  <string id="30001">다음 페이지</string>
+  <string id="30010">음악가 검색</string>
+  <string id="30011">앨범 검색</string>
+  <string id="30014">음악가</string>
+  <string id="30015">앨범</string>
+  <string id="30016">모음집</string>
+  <string id="30017">바로가기</string>
+  <string id="30018">신작앨범</string>
+  <string id="30019">인기앨범</string>
+  <string id="30020">전체</string>
+  <string id="30021">중국</string>
+  <string id="30022">서양</string>
+  <string id="30023">일본</string>
+  <string id="30024">한국</string>
+  <string id="30025">인기차트</string>
+  <string id="30026">일본/한국</string>
+  <string id="30027">빌보드</string>
+  <string id="30028">영국</string>
+  <string id="30029">오리콘</string>
+  <string id="30030">엠넷</string>
+  <string id="30100">음악가의 앨범보기</string>
+  <string id="30101">앨범의 수록곡보기</string>
+  <string id="30102">다운로드</string>
+  <string id="30103">음악가의 대표곡들</string>
+  <string id="30104">비슷한 음악가들</string>
+  <string id="30105">다운로드 완료. %s로 저장</string>
+</strings>
