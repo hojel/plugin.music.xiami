@@ -11,7 +11,7 @@ Features
 ===========
 
 [x] Search Artist / Album  
-[ ] Search Song
+[ ] Search Song  
 [x] Browse Artist / Album / Collect with given ID  
 [x] New releases & Hot albums  
 [x] Charts from various countries  
