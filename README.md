@@ -10,8 +10,8 @@ It also provides context menu to extend its navigation.
 Features
 ===========
 
-[x] Search Artist / Album
-[x] Browse Artist / Album / Collect with given ID
-[x] New releases & Hot albums
-[x] Charts from various countries
+[x] Search Artist / Album  
+[x] Browse Artist / Album / Collect with given ID  
+[x] New releases & Hot albums  
+[x] Charts from various countries  
 [ ] Navigate with Genre tree
