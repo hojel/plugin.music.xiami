@@ -20,17 +20,22 @@ _L = plugin.get_string
 
 import urllib, urllib2
 from BeautifulSoup import BeautifulSoup
-import simplejson
+import json
 import re
+import os
+import collections
 
-root_url = "http://www.xiami.com"
-agent_str = "Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/30.0.1599.17 Safari/537.36"
+ROOT_URL = "http://www.xiami.com"
+HTTP_HEADERS = {
+    "User-Agent" : "Mozilla/5.0 (Linux; Android 4.0.4; Galaxy Nexus Build/IMM76B) AppleWebKit/535.19 (KHTML, like Gecko) Chrome/18.0.1025.133 Mobile Safari/535.19"
+}
+xiamiToken = '9c2fdceeb13ac5521b3f0f72a20f6d2a'
 
 tPrevPage = u"[B]<<[/B]%s" % _L(30000)
 tNextPage = u"%s[B]>>[/B]" % _L(30001)
 
 def unescape_name(s):
-    return s.replace('&#039;',"'")
+    return s.replace('&amp;','&').replace('&#039;',"'")
 
 @plugin.route('/')
 def main_menu():
@@ -57,11 +62,11 @@ def bang_albums_menu(type):
 
 @plugin.route('/bang-albums/<type>/<style>')
 def bang_albums(type, style):
-    url = root_url+'/web/bang-albums?type=%s&style=%s' % (type, style)
+    url = ROOT_URL+'/web/bang-albums?type=%s&style=%s' % (type, style)
     plugin.log.debug(url)
-    req = urllib2.Request(url, None, {'User-Agent':agent_str})
+    req = urllib2.Request(url, headers=HTTP_HEADERS)
     content = urllib2.urlopen(req, timeout=5).read()
-    data = simplejson.loads(content)
+    data = json.loads(content)
 
     result = []
     for item in data['albums']:
@@ -79,26 +84,32 @@ def bang_albums(type, style):
 
 @plugin.route('/chart_top')
 def chart_menu():
+    img_base = 'http://img.xiami.net/res/img/default/charts200/'
     items = [
         {'label':_L(30020), 'path':plugin.url_for('chart', type='all')},
-        {'label':_L(30021), 'path':plugin.url_for('chart', type='huayu')},
-        {'label':_L(30022), 'path':plugin.url_for('chart', type='oumei')},
-        {'label':_L(30026), 'path':plugin.url_for('chart', type='rihan')},
+        {'label':_L(30021), 'path':plugin.url_for('chart', type='huayu'), 'thumbnail':img_base+'hua-hot.png'},
+        {'label':_L(30022), 'path':plugin.url_for('chart', type='oumei'), 'thumbnail':img_base+'oumei-hot.png'},
+        {'label':_L(30026), 'path':plugin.url_for('chart', type='rihan'), 'thumbnail':img_base+'rihan-hot.png'},
         #
-        {'label':_L(30027), 'path':plugin.url_for('chart', type='billboard')},
-        {'label':_L(30028), 'path':plugin.url_for('chart', type='uk')},
-        {'label':_L(30029), 'path':plugin.url_for('chart', type='oricon')},
-        {'label':_L(30030), 'path':plugin.url_for('chart', type='mnet')},
+        {'label':_L(30027), 'path':plugin.url_for('chart', type='billboard'), 'thumbnail':img_base+'bill.png'},
+        {'label':_L(30028), 'path':plugin.url_for('chart', type='uk'), 'thumbnail':img_base+'eng-uk.png'},
+        {'label':_L(30029), 'path':plugin.url_for('chart', type='oricon'), 'thumbnail':img_base+'ori.png'},
+        {'label':_L(30030), 'path':plugin.url_for('chart', type='mnet'), 'thumbnail':img_base+'ment.png'},
+        {'label':_L(30036), 'path':plugin.url_for('chart', type='hito'), 'thumbnail':img_base+'hito.png'},
+        {'label':_L(30037), 'path':plugin.url_for('chart', type='jinge'), 'thumbnail':img_base+'tvb.png'},
     ]
-    return items
+    return plugin.finish(items, view_mode='thumbnail')
 
 @plugin.route('/chart/<type>')
 def chart(type):
-    url = root_url+'/web/get-songs?type=%s&rtype=bang&id=0' % type
+    url = ROOT_URL+'/web/get-songs?type=%s&rtype=%s&id=0&_xiamitoken=%s' % (type, 'bang', xiamiToken)
     plugin.log.debug(url)
-    req = urllib2.Request(url, None, {'User-Agent':agent_str})
+    headers = HTTP_HEADERS
+    headers['Referer'] = 'http://www.xiami.com/web/spark'
+    headers['Cookie'] = '_xiamitoken=%s' % xiamiToken
+    req = urllib2.Request(url, headers=headers)
     content = urllib2.urlopen(req, timeout=5).read()
-    data = simplejson.loads(content)
+    data = json.loads(content)
 
     result = []
     for item in data['data']:
@@ -111,6 +122,7 @@ def chart(type):
             'thumbnail': thumb,
             'is_playable': True,
         })
+    #plugin.add_to_playlist(result, playlist='music')
     return result
 
 @plugin.route('/genre_top')
@@ -139,11 +151,11 @@ def genre_view_menu(sid):
     ]
     return items
 
-@plugin.route('/genre_view/<domain>/<sid>/<page>')
-def genre_view(domain, sid, page):
-    url = root_url+"/genre/%s/sid/%s/page/%s" % (domain, sid, page)
+@plugin.route('/genre/<domain>/<sid>')
+def genre_view(domain, sid, page='1'):
+    url = ROOT_URL+"/genre/%s/sid/%s/page/%s" % (domain, sid, page)
 
-    req = urllib2.Request(url, None, {'User-Agent':agent_str})
+    req = urllib2.Request(url, headers=HTTP_HEADERS)
     content = urllib2.urlopen(req, timeout=5).read()
     html = BeautifulSoup(content)
     result = []
@@ -152,31 +164,29 @@ def genre_view(domain, sid, page):
         a_tags = item.findAll('a')
         c_id = a_tags[0]['href'].split('/')[-1]
         if domain == 'songs':
-            title = u"%s - %s" % (a_tags[0].text, a_tags[1].text)
             result.append({
-                #'label': title,
-                'label': a_tags[0].text,
-                'label2': a_tags[1].text,   # artist
+                'label': unescape_name(a_tags[0].text),     # song
+                'label2': unescape_name(a_tags[1].text),    # artist
                 'path': plugin.url_for('song', songid=c_id),
                 'thumbnail': thumb,
                 'is_playable': True
             })
         elif domain == 'albums':
-            title = u"%s - %s" % (a_tags[0].text, a_tags[1].text)
             result.append({
-                #'label': title,
-                'label': a_tags[0].text,
-                'label2': a_tags[1].text,   # artist
+                'label': unescape_name(a_tags[0].text),     # album
+                'label2': unescape_name(a_tags[1].text),    # artist
                 'path': plugin.url_for('album', albumid=c_id),
                 'thumbnail': thumb,
             })
         elif domain == 'artists':
             result.append({
-                'label': a_tags[0].text,
+                'label': unescape_name(a_tags[0].text),
                 'path': plugin.url_for('artist_top', artistid=c_id),
                 'thumbnail': thumb,
             })
-    # navigation
+    #if domain == 'songs':
+    #    plugin.add_to_playlist(result, playlist='music')
+    ### navigation
     nav = html.find('div', {'id':'pagination'})
     if nav.find('a', {'class':'p_redirect'}):
         result.append({
@@ -204,9 +214,9 @@ def search(domain):
     if not keywd:
     	return None
 
-    url = root_url+"/search/%s?key=%s" % (domain, urllib.quote_plus(keywd))
+    url = ROOT_URL+"/search/%s?key=%s" % (domain, urllib.quote_plus(keywd))
 
-    req = urllib2.Request(url, None, {'User-Agent':agent_str})
+    req = urllib2.Request(url, headers=HTTP_HEADERS)
     content = urllib2.urlopen(req, timeout=5).read()
     html = BeautifulSoup(content)
     result = []
@@ -226,12 +236,14 @@ def search(domain):
                 ]
             })
         elif domain == 'album':
-            url = item.find('a', {'class':'CDcover100'})['href']
-            albumid = url.split('/')[-1]
-            url = item.find('a', {'class':'singer'})['href']
-            artistid = url.split('/')[-1]
+            album_node = item.find('a', {'class':'CDcover100'})
+            albumid = album_node['href'].split('/')[-1]
+            artist_node = item.find('a', {'class':'singer'})
+            artistid = artist_node['href'].split('/')[-1]
+            artist_name = artist_node.string
             result.append({
                 'label': title,
+                'label2': artist_name,
                 'path': plugin.url_for('album', albumid=albumid),
                 'thumbnail': thumb,
                 'context_menu': [
@@ -273,26 +285,26 @@ def collect_input():
 @plugin.route('/artist/<artistid>')
 def artist_top(artistid):
     # artist info
-    url = root_url+'/app/android/artist?id='+artistid
-    req = urllib2.Request(url, None, {'User-Agent':agent_str})
+    url = ROOT_URL+'/app/android/artist?id='+artistid
+    req = urllib2.Request(url, headers=HTTP_HEADERS)
     content = urllib2.urlopen(req, timeout=5).read()
-    data = simplejson.loads(content)
+    data = json.loads(content)
     albums_count = data['artist']['albums_count']
 
     plugin.redirect( plugin.url_for('artist', artistid=artistid, albumscnt=albums_count, page='0') )
 
-@plugin.route('/artist/<artistid>/<albumscnt>/<page>')
-def artist(artistid, albumscnt, page):
+@plugin.route('/artist/<artistid>/<albumscnt>')
+def artist(artistid, albumscnt, page='0'):
     albums_count = int(albumscnt)
     pageN = 1 if page == '0' else int(page)
 
     # discography
-    url = root_url+'/app/android/artist-albums?id=%s&page=%d' % (artistid, pageN)
+    url = ROOT_URL+'/app/android/artist-albums?id=%s&page=%d' % (artistid, pageN)
     plugin.log.debug(url)
 
-    req = urllib2.Request(url, None, {'User-Agent':agent_str})
+    req = urllib2.Request(url, headers=HTTP_HEADERS)
     content = urllib2.urlopen(req, timeout=5).read()
-    data = simplejson.loads(content)
+    data = json.loads(content)
     result = []
     for item in data['albums']:
         title = unescape_name(item['title'])
@@ -319,17 +331,17 @@ def artist(artistid, albumscnt, page):
 @plugin.route('/album/<albumid>')
 def album(albumid):
     # album info
-    url = root_url+'/app/android/album?id='+albumid
+    url = ROOT_URL+'/app/android/album?id='+albumid
 
-    req = urllib2.Request(url, None, {'User-Agent':agent_str})
+    req = urllib2.Request(url, headers=HTTP_HEADERS)
     content = urllib2.urlopen(req, timeout=5).read()
-    data = simplejson.loads(content)
+    data = json.loads(content)
     result = []
     for item in data['album']['songs']:
         title = unescape_name(item['name'])
         lyric = None
         if item['lyric'] and item['lyric'].startswith('http'):
-            req = urllib2.Request(url, None, {'User-Agent':agent_str})
+            req = urllib2.Request(url, headers=HTTP_HEADERS)
             lyric = urllib2.urlopen(req, timeout=5).read()
         result.append({
             'label': title,
@@ -342,21 +354,21 @@ def album(albumid):
                 (_L(30102), actions.background(plugin.url_for('download_file', url=item['location']))),
             ]
         })
+    #plugin.add_to_playlist(result, playlist='music')
     return result
 
 @plugin.route('/collect/<collectid>')
 def collect(collectid):
-    #url = root_url+'/song/playlist/id/%s/type/3' % collectid
-    url = root_url+'/app/android/collect?id=%s' % collectid
-    req = urllib2.Request(url, None, {'User-Agent':agent_str})
+    url = ROOT_URL+'/app/android/collect?id=%s' % collectid
+    req = urllib2.Request(url, headers=HTTP_HEADERS)
     content = urllib2.urlopen(req, timeout=5).read()
-    data = simplejson.loads(content)
+    data = json.loads(content)
     result = []
     for item in data['collect']['songs']:
         title = unescape_name(item['name'])
         lyric = None
         if item['lyric'] and item['lyric'].startswith('http'):
-            req = urllib2.Request(url, None, {'User-Agent':agent_str})
+            req = urllib2.Request(url, headers=HTTP_HEADERS)
             lyric = urllib2.urlopen(req, timeout=5).read()
         result.append({
             'label': title,
@@ -371,21 +383,22 @@ def collect(collectid):
                 (_L(30102), actions.background(plugin.url_for('download_file', url=item['location']))),
             ]
         })
+    #plugin.add_to_playlist(result, playlist='music')
     return plugin.finish(result, view_mode='thumbnail')
 
 @plugin.route('/topsongs/<artistid>')
 def topsongs(artistid):
-    url = root_url+'/app/android/artist-topsongs?id='+artistid
+    url = ROOT_URL+'/app/android/artist-topsongs?id='+artistid
 
-    req = urllib2.Request(url, None, {'User-Agent':agent_str})
+    req = urllib2.Request(url, headers=HTTP_HEADERS)
     content = urllib2.urlopen(req, timeout=5).read()
-    data = simplejson.loads(content)
+    data = json.loads(content)
     result = []
     for item in data['songs']:
         title = unescape_name(item['name'])
         lyric = None
         if item['lyric'] and item['lyric'].startswith('http'):
-            req = urllib2.Request(url, None, {'User-Agent':agent_str})
+            req = urllib2.Request(url, headers=HTTP_HEADERS)
             lyric = urllib2.urlopen(req, timeout=5).read()
         result.append({
             'label': title,
@@ -402,11 +415,11 @@ def topsongs(artistid):
 
 @plugin.route('/similar/artist/<artistid>')
 def similar_artists(artistid):
-    url = root_url+'/app/android/artist-similar?id='+artistid
+    url = ROOT_URL+'/app/android/artist-similar?id='+artistid
 
-    req = urllib2.Request(url, None, {'User-Agent':agent_str})
+    req = urllib2.Request(url, headers=HTTP_HEADERS)
     content = urllib2.urlopen(req, timeout=5).read()
-    data = simplejson.loads(content)
+    data = json.loads(content)
     result = []
     for item in data['artists']:
         name = unescape_name(item['name'])
@@ -424,12 +437,12 @@ def similar_artists(artistid):
 
 @plugin.route('/song/<songid>')
 def song(songid):
-    url = root_url+'/app/iphone/song/id/'+songid
+    url = ROOT_URL+'/app/android/song/id/'+songid
 
-    req = urllib2.Request(url, None, {'User-Agent':agent_str})
+    req = urllib2.Request(url, headers=HTTP_HEADERS)
     content = urllib2.urlopen(req, timeout=5).read()
-    data = simplejson.loads(content)
-    mp3_url = data['location']
+    data = json.loads(content)
+    mp3_url = data['song_location']
 
     plugin.set_resolved_url(mp3_url)
 
@@ -456,10 +469,10 @@ def download_file(url):
     return plugin.finish(None, succeeded=True)
 
 def get_genres():
-    addon_id = plugin._addon.getAddonInfo('id')
-    gtbl_path = xbmc.translatePath("special://home/addons/%s/resources/genre.json" % addon_id)
+    plugin_path = plugin.addon.getAddonInfo('path')
+    gtbl_path = os.path.join(plugin_path, 'resources', 'genre.json')
     f = open(gtbl_path)
-    return simplejson.load(f)
+    return json.load(f, object_pairs_hook=collections.OrderedDict)
 
 if __name__ == "__main__":
     plugin.run()

@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.music.xiami" name="Shrimp Music Streaming" version="0.2.0" provider-name="edge">
+<addon id="plugin.music.xiami" name="Xiami Music" version="0.2.1" provider-name="edge">
   <requires>
     <import addon="xbmc.python" version="2.0"/>
     <import addon="script.module.xbmcswift2" version="1.1.1"/>
     <import addon="script.module.beautifulsoup" version="3.0.8"/>
-    <import addon="script.module.simplejson" version="2.0.10"/>
   </requires>
   <extension point="xbmc.python.pluginsource" library="addon.py">
     <provides>audio</provides>
@@ -13,7 +12,7 @@
     <platform>all</platform>
     <language>cn</language>
     <summary lang="cn">虾米音乐网</summary>
-    <summary lang="en">Shrimp Music</summary>
-    <description lang="en">Streaming music from xiami.com</description>
+    <summary lang="en">Xiami Music</summary>
+    <description lang="en">Music streaming from xiami.com</description>
   </extension>
 </addon>
